@@ -21,18 +21,22 @@ export default function RoastRoomPage() {
     if (!proposal.trim()) return;
     setLoading(true);
     try {
+      // Chamada para a action server-side sem depender de rotas de pasta
       const res = await fetch('/api/roast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proposal })
       });
+      
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro na resposta do servidor");
+      
       if (data.debate && data.debate.length > 0) {
         setDebate(data.debate);
         setIndiceAtual(0);
       }
     } catch (err) {
-      alert("Erro ao consultar o conselho: " + err.message);
+      alert("Erro ao convocar mesa: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -42,12 +46,11 @@ export default function RoastRoomPage() {
   const oradorAtual = falaAtual ? CONSELHEIROS.find(c => c.id === falaAtual.orador) : null;
 
   return (
-    <div className="min-h-screen bg-[#070d17] text-slate-100 flex flex-col font-sans">
-      {/* Top Header */}
+    <div className="min-h-screen bg-[#070d17] text-slate-100 flex flex-col font-sans select-none">
       <header className="border-b border-slate-800 px-6 py-3 flex items-center justify-between bg-slate-950/40">
         <div className="flex items-center space-x-3">
           <div className="bg-sky-600 text-white font-black px-2 py-0.5 rounded text-xs">CMS</div>
-          <h1 className="text-sm font-bold">Roast Room <span className="text-slate-500 font-normal ml-2">Powered by Gemini</span></h1>
+          <h1 className="text-sm font-bold">Roast Room <span className="text-slate-500 font-normal ml-2">Tokto & CupomClic</span></h1>
         </div>
         {debate.length > 0 && (
           <span className="text-xs bg-slate-900 border border-slate-800 text-sky-400 px-3 py-1 rounded font-mono">
@@ -56,13 +59,12 @@ export default function RoastRoomPage() {
         )}
       </header>
 
-      {/* Caixa de Entrada do Briefing */}
       <div className="p-4 bg-slate-900/60 border-b border-slate-800 flex gap-2">
         <input 
           type="text" 
           value={proposal} 
           onChange={(e) => setProposal(e.target.value)}
-          placeholder="Descreva a ideia, produto ou decisão para a mesa dissecar..."
+          placeholder="Descreva a ideia ou modelo de negócio..."
           className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-sky-500"
         />
         <button 
@@ -75,10 +77,8 @@ export default function RoastRoomPage() {
       </div>
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Palco Central */}
         <section className="flex-1 flex flex-col p-6 justify-between relative border-r border-slate-800/80">
           
-          {/* Semicírculo dos Conselheiros */}
           <div className="relative py-12 flex items-center justify-center min-h-[260px]">
             <svg className="absolute inset-0 w-full h-full pointer-events-none stroke-slate-800" fill="none" strokeWidth="1.5" strokeDasharray="4 4">
               <path d="M 120 160 Q 450 30 780 160" className="stroke-sky-900/30" />
@@ -117,7 +117,6 @@ export default function RoastRoomPage() {
             </div>
           </div>
 
-          {/* Balão de Fala Inferior */}
           <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 relative shadow-2xl min-h-[140px] flex flex-col justify-between">
             {falaAtual ? (
               <div>
@@ -152,7 +151,6 @@ export default function RoastRoomPage() {
           </div>
         </section>
 
-        {/* Sidebar: Key Points */}
         <aside className="w-full lg:w-72 bg-slate-950/80 p-4 overflow-y-auto border-t lg:border-t-0 border-slate-800 text-xs">
           <h2 className="font-bold uppercase tracking-wider text-slate-500 mb-3 text-[10px]">Pontos-Chave (Key Points)</h2>
           <div className="space-y-2">
