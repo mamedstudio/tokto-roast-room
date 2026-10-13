@@ -9,59 +9,63 @@ export async function POST(req) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : null;
-    
+
     if (!apiKey) {
-      return NextResponse.json({ error: "A variável GEMINI_API_KEY não foi encontrada na Vercel." }, { status: 500 });
+      return NextResponse.json({ error: "Chave GEMINI_API_KEY não configurada na Vercel." }, { status: 500 });
     }
 
-    const promptText = `
+    const systemPrompt = `
 Você é o moderador da mesa redonda Roast Room.
 Analise a seguinte proposta de negócio:
 "${proposal}"
 
-Gere uma discussão de 7 falas encadeadas em PORTUGUÊS (Brasil) com os conselheiros:
-- "bezos" (Jeff Bezos)
-- "graham" (Paul Graham)
-- "hormozi" (Alex Hormozi)
-- "gary" (Gary Vee)
-- "dan" (Dan Martell)
-- "gino" (Gino Wickman)
-- "buffett" (Warren Buffett)
+Gere uma discussão de 7 falas encadeadas em tom provocativo, autêntico e perspicaz em PORTUGUÊS (Brasil) com os conselheiros:
+- "bezos" (Jeff Bezos: obsessão no cliente, balcão, atrito)
+- "graham" (Paul Graham: startup inicial, fazer manual no começo)
+- "hormozi" (Alex Hormozi: precificação, margem, oferta de alto valor)
+- "gary" (Gary Vee: volume de conteúdo, atenção local, redes sociais)
+- "dan" (Dan Martell: automação, tempo do fundador, processos)
+- "gino" (Gino Wickman: execução, scorecard semanal, métricas práticas)
+- "buffett" (Warren Buffett: margem de segurança, custo de tráfego vs lucro)
 
-Devolva APENAS uma matriz JSON válida (sem markdown, sem blocos de texto) exatamente neste formato:
+Responda ESTRITAMENTE com um array JSON válido (sem qualquer texto antes ou depois, sem crases markdown) neste formato:
 [
   {
     "orador": "hormozi",
     "alvo": "Proposta Geral",
-    "texto": "Texto curto da fala.",
-    "resumo": "Resumo de 1 frase.",
+    "texto": "Fala curta e incisiva aqui.",
+    "resumo": "Resumo de 1 frase para o painel lateral.",
     "voto": "Sim"
   }
 ]
 `;
 
-    // Chamada direta via REST API à versão v1beta oficial
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    
-    const geminiRes = await fetch(url, {
+    // Endpoint oficial v1beta com gemini-2.5-flash
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: { responseMimeType: "application/json" }
+        contents: [
+          {
+            parts: [{ text: systemPrompt }]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
       })
     });
 
-    const geminiData = await geminiRes.json();
+    const data = await res.json();
 
-    if (!geminiRes.ok) {
-      console.error("Erro devolvido pela Google API:", geminiData);
-      return NextResponse.json({ 
-        error: geminiData.error?.message || "Erro na API do Gemini" 
-      }, { status: geminiRes.status });
+    if (!res.ok) {
+      console.error("Erro da API Google:", data);
+      return NextResponse.json({ error: data.error?.message || "Erro na API Gemini" }, { status: res.status });
     }
 
-    let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
     rawText = rawText.trim();
     if (rawText.startsWith("```json")) rawText = rawText.replace(/^```json/, "").replace(/```$/, "").trim();
     if (rawText.startsWith("```")) rawText = rawText.replace(/^```/, "").replace(/```$/, "").trim();
@@ -70,7 +74,7 @@ Devolva APENAS uma matriz JSON válida (sem markdown, sem blocos de texto) exata
     return NextResponse.json({ debate });
 
   } catch (error) {
-    console.error("Erro interno no backend:", error);
+    console.error("Erro interno no servidor:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
