@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   try {
     const { proposal } = await req.json();
@@ -16,19 +18,19 @@ export async function POST(req) {
 
     const systemPrompt = `
 Você é o moderador da mesa redonda Roast Room.
-Analise a seguinte proposta de negócio:
+Analise criticamente a seguinte proposta:
 "${proposal}"
 
-Gere uma discussão de 7 falas encadeadas em tom provocativo, autêntico e perspicaz em PORTUGUÊS (Brasil) com os conselheiros:
-- "bezos" (Jeff Bezos)
-- "graham" (Paul Graham)
-- "hormozi" (Alex Hormozi)
-- "gary" (Gary Vee)
-- "dan" (Dan Martell)
-- "gino" (Gino Wickman)
-- "buffett" (Warren Buffett)
+Gere uma discussão de 7 falas encadeadas em PORTUGUÊS (Brasil) com os conselheiros:
+- "bezos" (Jeff Bezos: obsessão no cliente, balcão, atrito)
+- "graham" (Paul Graham: startup inicial, fazer manual no começo)
+- "hormozi" (Alex Hormozi: precificação, margem, oferta de alto valor)
+- "gary" (Gary Vee: volume de conteúdo, atenção local, redes sociais)
+- "dan" (Dan Martell: automação, tempo do fundador, processos)
+- "gino" (Gino Wickman: execução, scorecard semanal, métricas práticas)
+- "buffett" (Warren Buffett: margem de segurança, custo de tráfego vs lucro)
 
-Responda ESTRITAMENTE com um array JSON válido (sem qualquer texto antes ou depois, sem crases markdown) neste formato:
+Responda ESTRITAMENTE com um array JSON válido (sem texto antes ou depois, sem crases markdown) neste formato:
 [
   {
     "orador": "hormozi",
