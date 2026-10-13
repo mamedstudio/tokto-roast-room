@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -9,7 +9,13 @@ export async function POST(req) {
       return NextResponse.json({ error: "Proposta não enviada." }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    });
 
     const systemPrompt = `
 Você é o moderador de uma mesa redonda corporativa chamada Roast Room.
@@ -30,23 +36,18 @@ Cada rodada deve ser um objeto JSON com:
 - "resumo": resumo de 1 linha para o painel lateral
 - "voto": "Sim" ou "Alerta"
 
-Retorne EXCLUSIVAMENTE um array JSON válido sem markdown adicional. Exemplo:
+Retorne EXCLUSIVAMENTE um array JSON válido sem blocos de markdown. Exemplo:
 [
   { "orador": "hormozi", "alvo": "Proposta Geral", "texto": "...", "resumo": "...", "voto": "Sim" }
 ]
 `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        { role: 'user', parts: [{ text: `${systemPrompt}\n\nProposta do fundador para dissecar:\n${proposal}` }] }
-      ],
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+    const result = await model.generateContent(
+      `${systemPrompt}\n\nProposta do fundador para dissecar:\n${proposal}`
+    );
 
-    const data = JSON.parse(response.text);
+    const responseText = result.response.text();
+    const data = JSON.parse(responseText);
     return NextResponse.json({ debate: data });
 
   } catch (error) {
