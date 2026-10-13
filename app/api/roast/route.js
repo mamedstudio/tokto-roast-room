@@ -20,13 +20,13 @@ Analise a seguinte proposta de negócio:
 "${proposal}"
 
 Gere uma discussão de 7 falas encadeadas em tom provocativo, autêntico e perspicaz em PORTUGUÊS (Brasil) com os conselheiros:
-- "bezos" (Jeff Bezos: obsessão no cliente, balcão, atrito)
-- "graham" (Paul Graham: startup inicial, fazer manual no começo)
-- "hormozi" (Alex Hormozi: precificação, margem, oferta de alto valor)
-- "gary" (Gary Vee: volume de conteúdo, atenção local, redes sociais)
-- "dan" (Dan Martell: automação, tempo do fundador, processos)
-- "gino" (Gino Wickman: execução, scorecard semanal, métricas práticas)
-- "buffett" (Warren Buffett: margem de segurança, custo de tráfego vs lucro)
+- "bezos" (Jeff Bezos)
+- "graham" (Paul Graham)
+- "hormozi" (Alex Hormozi)
+- "gary" (Gary Vee)
+- "dan" (Dan Martell)
+- "gino" (Gino Wickman)
+- "buffett" (Warren Buffett)
 
 Responda ESTRITAMENTE com um array JSON válido (sem qualquer texto antes ou depois, sem crases markdown) neste formato:
 [
@@ -40,28 +40,20 @@ Responda ESTRITAMENTE com um array JSON válido (sem qualquer texto antes ou dep
 ]
 `;
 
-    // Endpoint oficial v1beta com gemini-2.5-flash
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: systemPrompt }]
-          }
-        ],
-        generationConfig: {
-          responseMimeType: "application/json"
-        }
+        contents: [{ parts: [{ text: systemPrompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
       })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      console.error("Erro da API Google:", data);
       return NextResponse.json({ error: data.error?.message || "Erro na API Gemini" }, { status: res.status });
     }
 
@@ -74,7 +66,6 @@ Responda ESTRITAMENTE com um array JSON válido (sem qualquer texto antes ou dep
     return NextResponse.json({ debate });
 
   } catch (error) {
-    console.error("Erro interno no servidor:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
