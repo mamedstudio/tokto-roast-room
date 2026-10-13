@@ -18,17 +18,17 @@ export async function POST(req) {
 
     const systemPrompt = `
 Você é o moderador da mesa redonda Roast Room.
-Analise criticamente a seguinte proposta de negócio:
+Analise a seguinte proposta de negócio:
 "${proposal}"
 
-Gere uma discussão de 7 falas encadeadas em PORTUGUÊS (Brasil) com os conselheiros:
-- "bezos" (Jeff Bezos)
-- "graham" (Paul Graham)
-- "hormozi" (Alex Hormozi)
-- "gary" (Gary Vee)
-- "dan" (Dan Martell)
-- "gino" (Gino Wickman)
-- "buffett" (Warren Buffett)
+Gere uma discussão de 7 falas encadeadas em tom provocativo, autêntico e perspicaz em PORTUGUÊS (Brasil) com os conselheiros:
+- "bezos" (Jeff Bezos: obsessão no cliente, balcão, atrito)
+- "graham" (Paul Graham: startup inicial, fazer manual no começo)
+- "hormozi" (Alex Hormozi: precificação, margem, oferta de alto valor)
+- "gary" (Gary Vee: volume de conteúdo, atenção local, redes sociais)
+- "dan" (Dan Martell: automação, tempo do fundador, processos)
+- "gino" (Gino Wickman: execução, scorecard semanal, métricas práticas)
+- "buffett" (Warren Buffett: margem de segurança, custo de tráfego vs lucro)
 
 Responda ESTRITAMENTE com um array JSON válido (sem qualquer texto antes ou depois, sem crases markdown) neste formato:
 [
@@ -42,50 +42,41 @@ Responda ESTRITAMENTE com um array JSON válido (sem qualquer texto antes ou dep
 ]
 `;
 
-    // Lista de modelos ordenados por prioridade para contornar picos de procura (503)
-    const modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
-    let lastError = null;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
 
-    for (const modelName of modelos) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-        
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemPrompt }] }],
-            generationConfig: { responseMimeType: "application/json" }
-          })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-          rawText = rawText.trim();
-          if (rawText.startsWith("```json")) rawText = rawText.replace(/^```json/, "").replace(/```$/, "").trim();
-          if (rawText.startsWith("```")) rawText = rawText.replace(/^```/, "").replace(/```$/, "").trim();
-
-          const debate = JSON.parse(rawText);
-          return NextResponse.json({ debate });
-        } else {
-          lastError = data.error?.message || `Erro no modelo ${modelName}`;
-          // Se for erro de quota/alta procura (503), avança para a próxima tentativa no ciclo
-          if (res.status === 503 || res.status === 429) {
-            continue;
-          } else {
-            return NextResponse.json({ error: lastError }, { status: res.status });
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: systemPrompt }]
           }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json"
         }
-      } catch (err) {
-        lastError = err.message;
-      }
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return NextResponse.json({ 
+        error: data.error?.message || "Erro retornado pela API Gemini" 
+      }, { status: res.status });
     }
 
-    return NextResponse.json({ error: `Serviço temporariamente ocupado: ${lastError}` }, { status: 503 });
+    let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    rawText = rawText.trim();
+    if (rawText.startsWith("```json")) rawText = rawText.replace(/^```json/, "").replace(/```$/, "").trim();
+    if (rawText.startsWith("```")) rawText = rawText.replace(/^```/, "").replace(/```$/, "").trim();
+
+    const debate = JSON.parse(rawText);
+    return NextResponse.json({ debate });
 
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Erro interno no backend:", error);
+    return NextResponse.json({ error: error.message || "Erro ao processar o debate." }, { status: 500 });
   }
 }
