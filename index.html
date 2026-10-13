@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roast Room — Conselho Consultivo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b111a; color: #f1f5f9; }
+    .glow-active {
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
+      border-color: #38bdf8 !important;
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+
+  <!-- Cabeçalho -->
+  <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="bg-sky-600 text-white font-black px-2 py-1 rounded text-sm tracking-wider">CMS</div>
+      <h1 class="text-lg font-bold tracking-tight">Roast Room <span class="text-xs text-slate-400 font-normal ml-2">Tokto & CupomClic</span></h1>
+    </div>
+    <div class="flex items-center space-x-4 text-xs text-slate-400">
+      <button onclick="reiniciarDebate()" class="hover:text-white transition">Reiniciar</button>
+      <span class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-sky-400 font-mono" id="round-indicator">Rodada 1 de 6</span>
+    </div>
+  </header>
+
+  <!-- Área Principal -->
+  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    
+    <!-- Palco do Debate (Centro) -->
+    <section class="flex-1 flex flex-col p-6 justify-between border-b lg:border-b-0 lg:border-r border-slate-800 relative">
+      
+      <!-- Linha Superior de Métricas da Proposta -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-lg px-4 py-2 flex items-center justify-between text-xs text-slate-300">
+        <span>Foco: <strong>200 lojistas pioneiros</strong> | Comissão: <strong>15% embutidos</strong> | Influenciador: <strong>1% por venda</strong></span>
+        <span class="text-emerald-400 font-semibold" id="consensus-score">Consenso: 6/7 Aprovam</span>
+      </div>
+
+      <!-- Semicírculo dos Conselheiros -->
+      <div class="relative py-12 flex items-center justify-center">
+        <div class="grid grid-cols-7 gap-2 md:gap-4 w-full max-w-4xl" id="advisors-grid">
+          <!-- Gerado dinamicamente via JavaScript -->
+        </div>
+      </div>
+
+      <!-- Balão de Fala do Conselheiro Ativo -->
+      <div class="bg-slate-900/90 border border-slate-700 rounded-xl p-5 relative shadow-2xl min-h-[140px] flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sky-400 font-bold text-sm" id="active-advisor-name">Alex Hormozi</span>
+            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700" id="active-target">Pushes back on: Paul Graham</span>
+          </div>
+          <p class="text-sm md:text-base text-slate-200 leading-relaxed italic" id="active-speech">
+            "Carregando debate..."
+          </p>
+        </div>
+
+        <!-- Controlos Inferiores -->
+        <div class="flex items-center justify-between pt-4 mt-2 border-t border-slate-800 text-xs">
+          <div class="flex items-center space-x-2 text-slate-400">
+            <span id="turn-counter">Vez 1 de 6</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="proximaFala()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-1.5 rounded transition">
+              Avançar Fala →
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Barra Lateral: Key Points & Histórico -->
+    <aside class="w-full lg:w-80 bg-slate-950 p-4 overflow-y-auto border-t lg:border-t-0 border-slate-800 text-xs">
+      <h2 class="font-bold uppercase tracking-wider text-slate-400 mb-3 text-[11px]">Pontos-Chave (Key Points)</h2>
+      <div class="space-y-3" id="key-points-list">
+        <!-- Itens inseridos dinamicamente -->
+      </div>
+    </aside>
+
+  </main>
+
+  <script>
+    // 1. Definição dos Conselheiros
+    const conselheiros = [
+      { id: "bezos", nome: "Jeff Bezos", foto: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Jeff_Bezos_at_Amazon_Spheres_Grand_Opening_in_Seattle_-_2018_%2839074799224%29_%28cropped%29.jpg/240px-Jeff_Bezos_at_Amazon_Spheres_Grand_Opening_in_Seattle_-_2018_%2839074799224%29_%28cropped%29.jpg", voto: "Sim" },
+      { id: "graham", nome: "Paul Graham", foto: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Paul_Graham_%28cropped%29.jpg/240px-Paul_Graham_%28cropped%29.jpg", voto: "Sim" },
+      { id: "hormozi", nome: "Alex Hormozi", foto: "https://pbs.twimg.com/profile_images/1683935260105371648/pW4_XnB__400x400.jpg", voto: "Sim" },
+      { id: "gary", nome: "Gary Vee", foto: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Gary_Vaynerchuk_in_2017.jpg/240px-Gary_Vaynerchuk_in_2017.jpg", voto: "Sim" },
+      { id: "dan", nome: "Dan Martell", foto: "https://pbs.twimg.com/profile_images/1587823522264584192/G8H48N8i_400x400.jpg", voto: "Alerta" },
+      { id: "gino", nome: "Gino Wickman", foto: "https://pbs.twimg.com/profile_images/1225841680193908736/wU99R7iY_400x400.jpg", voto: "Sim" },
+      { id: "buffett", nome: "Warren Buffett", foto: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Warren_Buffett_at_the_2015_Berkshire_Hathaway_Annual_Shareholders_Meeting_%28cropped%29.jpg/240px-Warren_Buffett_at_the_2015_Berkshire_Hathaway_Annual_Shareholders_Meeting_%28cropped%29.jpg", voto: "Sim" }
+    ];
+
+    // 2. Guião de Falas e Reações
+    const debate = [
+      {
+        orador: "hormozi",
+        alvo: "Modelo Geral",
+        texto: "Embutir 15% no desconto agressivo e tirar o trabalho do lojista (só manda foto e preço) é genial. Mas 200 lojistas manuais exigem volume. Não virem agência!",
+        resumo: "Hormozi aprova 15% embutidos, mas alerta para o custo operacional de gerir 200 lojas à mão."
+      },
+      {
+        orador: "buffett",
+        alvo: "Alex Hormozi",
+        texto: "A margem de 14% líquida (15% menos 1% do influenciador) protege o capital se a calculadora de tráfego for conservadora. Operação sem risco de crédito.",
+        resumo: "Buffett calcula 14% de margem líquida e aprova a ausência de adiantamento de capital."
+      },
+      {
+        orador: "graham",
+        alvo: "Warren Buffett",
+        texto: "Manter automação em stand-by e fazer manual para 200 lojistas é o manual clássico de startup: faça coisas que não escalam antes de automatizar o errado.",
+        resumo: "Graham elogia a fase manual nos 200 lojistas pioneiros para aprender o produto."
+      },
+      {
+        orador: "gary",
+        alvo: "Dan Martell",
+        texto: "Influenciador a 1% só funciona se o cheque do primeiro mês for gordo. Se o criador receber 90 reais no mês, vai embora. Garantam alto volume inicial!",
+        resumo: "Gary Vee exige volume imediato para não desmotivar o criador de 10k."
+      },
+      {
+        orador: "dan",
+        alvo: "Paul Graham",
+        texto: "Fazer na mão é bom, mas tem prazo de validade: 60 dias. Se passarem disso, os fundadores viram escravos de cortar fotos e colar textos no WhatsApp.",
+        resumo: "Dan Martell estipula teto de 60 dias manuais antes de ativar as automações."
+      },
+      {
+        orador: "gino",
+        alvo: "Todos",
+        texto: "Meta única: quantos QR Codes foram bipados no balcão essa semana? Esqueçam curtidas e cliques. O scorecard manda. Modelo aprovado para execução!",
+        resumo: "Gino Wickman define a métrica-rei: total de QR Codes convertidos em caixa."
+      }
+    ];
+
+    let indiceAtual = 0;
+
+    // Renderizar Avatares
+    function renderizarConselho() {
+      const grid = document.getElementById("advisors-grid");
+      grid.innerHTML = conselheiros.map((c, i) => `
+        <div id="card-${c.id}" class="flex flex-col items-center p-2 rounded-xl border border-slate-800 bg-slate-900/40 transition-all duration-300">
+          <img src="${c.foto}" alt="${c.nome}" class="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-2 border-slate-700 mb-2">
+          <span class="text-[11px] font-bold text-slate-200 truncate w-full text-center">${c.nome}</span>
+          <span class="text-[9px] ${c.voto === 'Sim' ? 'text-emerald-400' : 'text-amber-400'} font-semibold mt-0.5">${c.voto}</span>
+        </div>
+      `).join("");
+    }
+
+    // Atualizar Ecrã com a Fala Atual
+    function atualizarFala() {
+      const fala = debate[indiceAtual];
+      const orador = conselheiros.find(c => c.id === fala.orador);
+
+      // Atualizar destaques visuais
+      conselheiros.forEach(c => {
+        const el = document.getElementById(`card-${c.id}`);
+        if (el) el.classList.remove("glow-active", "bg-slate-800");
+      });
+      const elAtivo = document.getElementById(`card-${orador.id}`);
+      if (elAtivo) elAtivo.classList.add("glow-active", "bg-slate-800");
+
+      // Atualizar textos
+      document.getElementById("active-advisor-name").innerText = orador.nome;
+      document.getElementById("active-target").innerText = `Responde a: ${fala.alvo}`;
+      document.getElementById("active-speech").innerText = `"${fala.texto}"`;
+      document.getElementById("turn-counter").innerText = `Fala ${indiceAtual + 1} de ${debate.length}`;
+      document.getElementById("round-indicator").innerText = `Passo ${indiceAtual + 1} de ${debate.length}`;
+
+      // Adicionar à lista lateral de Key Points
+      const lista = document.getElementById("key-points-list");
+      lista.innerHTML = debate.slice(0, indiceAtual + 1).map(d => {
+        const adv = conselheiros.find(c => c.id === d.orador);
+        return `
+          <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+            <span class="font-bold text-sky-400 block mb-1">${adv.nome}</span>
+            <span class="text-slate-300">${d.resumo}</span>
+          </div>
+        `;
+      }).reverse().join("");
+    }
+
+    function proximaFala() {
+      indiceAtual = (indiceAtual + 1) % debate.length;
+      atualizarFala();
+    }
+
+    function reiniciarDebate() {
+      indiceAtual = 0;
+      atualizarFala();
+    }
+
+    // Iniciar aplicação
+    renderizarConselho();
+    atualizarFala();
+  </script>
+</body>
+</html>
