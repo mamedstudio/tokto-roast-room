@@ -6,7 +6,7 @@ export async function POST(req) {
   try {
     const { proposal } = await req.json();
 
-    if (!proposal) {
+    if (!proposal || !proposal.trim()) {
       return NextResponse.json({ error: "Proposta não enviada." }, { status: 400 });
     }
 
@@ -16,9 +16,11 @@ export async function POST(req) {
       return NextResponse.json({ error: "Chave GROQ_API_KEY não configurada na Vercel." }, { status: 500 });
     }
 
-    const systemPrompt = `
-Você é o moderador da mesa redonda corporativa Roast Room.
-Analise a proposta e gere uma discussão de 7 falas em PORTUGUÊS (Brasil) com os conselheiros:
+    const systemPrompt = `Você é o moderador de uma mesa redonda corporativa (Roast Room).
+Analise a seguinte proposta de negócio de forma afiada, realista e profunda:
+"${proposal}"
+
+Gere uma discussão de 7 falas encadeadas em tom perspicaz em PORTUGUÊS (Brasil) com os conselheiros:
 - "bezos" (Jeff Bezos: obsessão no cliente, balcão, atrito)
 - "graham" (Paul Graham: startup inicial, fazer manual no começo)
 - "hormozi" (Alex Hormozi: precificação, margem, oferta de alto valor)
@@ -27,46 +29,73 @@ Analise a proposta e gere uma discussão de 7 falas em PORTUGUÊS (Brasil) com o
 - "gino" (Gino Wickman: execução, scorecard semanal, métricas práticas)
 - "buffett" (Warren Buffett: margem de segurança, custo de tráfego vs lucro)
 
-Responda OBRIGATORIAMENTE com um objeto JSON no seguinte formato:
+Responda ESTRITAMENTE em formato JSON com o seguinte formato:
 {
   "debate": [
     {
       "orador": "hormozi",
       "alvo": "Proposta Geral",
-      "texto": "Fala incisiva e curta aqui.",
+      "texto": "Fala incisiva do conselheiro em até 3 frases.",
       "resumo": "Resumo de 1 frase para o painel lateral.",
       "voto": "Sim"
     }
   ]
-}
-`;
+}`;
 
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Proposta a dissecar:\n${proposal}` }
-        ],
-        temperature: 0.6,
-        response_format: { type: "json_object" }
-      })
-    });
+    // Lista de modelos suportados pela Groq em ordem de preferência
+    const modelosPossiveis = [
+      "llama-3.3-70b-versatile",
+      "llama3-70b-8192",
+      "llama3-8b-8192",
+      "mixtral-8x7b-32768"
+    ];
 
-    const data = await res.json();
+    let resposta = null;
+    let ultimoErro = null;
 
-    if (!res.ok) {
-      return NextResponse.json({ 
-        error: data.error?.message || "Erro na API Groq" 
-      }, { status: res.status });
+    for (const model of modelosPossiveis) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `Analise criticamente:\n${proposal}` }
+            ],
+            temperature: 0.7,
+            response_format: { type: "json_object" }
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          resposta = data;
+          break; // Sucesso, sai do loop
+        } else {
+          ultimoErro = data.error?.message || `Erro no modelo ${model}`;
+          // Se for erro de modelo inexistente, tenta o próximo da lista
+          if (res.status === 404 || (data.error?.message && data.error.message.includes("does not exist"))) {
+            continue;
+          } else {
+            return NextResponse.json({ error: ultimoErro }, { status: res.status });
+          }
+        }
+      } catch (err) {
+        ultimoErro = err.message;
+      }
     }
 
-    const content = data.choices?.[0]?.message?.content || "{}";
+    if (!resposta) {
+      return NextResponse.json({ error: `Nenhum modelo da Groq respondeu: ${ultimoErro}` }, { status: 500 });
+    }
+
+    const content = resposta.choices?.[0]?.message?.content || "{}";
     const parsed = JSON.parse(content);
     const debate = parsed.debate || (Array.isArray(parsed) ? parsed : Object.values(parsed)[0]) || [];
 
@@ -74,6 +103,6 @@ Responda OBRIGATORIAMENTE com um objeto JSON no seguinte formato:
 
   } catch (error) {
     console.error("Erro interno:", error);
-    return NextResponse.json({ error: error.message || "Erro ao processar o debate." }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Erro no processamento da IA." }, { status: 500 });
   }
 }
